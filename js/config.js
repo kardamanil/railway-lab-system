@@ -47,7 +47,7 @@ window.STD_DIESEL = [
     { name: "Cetane Index", method: "P:174", type: "min", min: 46 },
     { name: "Pour Point (Winter), °C", method: "P:10/Sec2", type: "max", max: 3 },
     { name: "Pour Point (Summer), °C", method: "P:10/Sec2", type: "max", max: 15 },
-    { name: "Copper Strip Corrosion (3h at 50°C)", method: "P:15", type: "class", value: "Class 1" },
+    { name: "Copper Strip Corrosion (3h at 50°C)", method: "P:15", type: "max", max: 1 },
     { name: "Distillation (95% v/v recovery), °C", method: "P:18 / ISO 3405", type: "max", max: 360 },
     { name: "Flash Point (Abel), °C", method: "P:20", type: "min", min: 35 },
     { name: "Kinematic Viscosity @40°C, mm²/s or cst", method: "P:25", type: "range", min: 2.0, max: 4.5 },

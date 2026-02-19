@@ -166,13 +166,14 @@
             </div>
 
             
-            
             <div style="text-align: right; margin-top: 20px;">
-                <button id="btnSaveTest" class="btn btn-success">Save / Add</button>
+                <button id="btnSaveTest" class="btn btn-success" onclick="window.handleSaveClick()">Save / Add</button>
             </div>
+            
             <!-- <div style="text-align: right; margin-top: 20px;">
-                <button class="btn btn-success" onclick="window.addCustomTestFromModal()">Add to List</button>
+                <button id="btnSaveTest" class="btn btn-success" onclick="window.handleSaveClick()">Save / Add</button>
             </div> -->
+           
         </div>
     </div>
 
@@ -183,7 +184,7 @@
     
     
     
-    <script type="module">
+    <!-- <script type="module">
         // 1. Import Logic
         import { searchStandard, startNewStandardCreation, openCreationModal, toggleLimitInputs, initAutoLoad } from "./js/standards.js";
     
@@ -199,26 +200,25 @@
         });
     
         console.log("Modules Loaded & Linked");
-    </script>
-    
-    
-    <!-- <script type="module">
-        // Import Logic
-        import { searchStandard, openCreationModal, toggleLimitInputs, addCustomTestFromModal, initAutoLoad } from "./js/standards.js";
+    </script> -->
+    <script type="module">
+        // Import 'handleSaveClick' too
+        import { searchStandard, startNewStandardCreation, openCreationModal, toggleLimitInputs, initAutoLoad, handleSaveClick } from "./js/standards.js";
 
-        // EXPOSE TO WINDOW (Bridge Logic)
+        // EXPOSE TO WINDOW
         window.searchStandard = searchStandard;
+        window.startNewStandardCreation = startNewStandardCreation;
         window.openCreationModal = openCreationModal;
         window.toggleLimitInputs = toggleLimitInputs;
-        window.addCustomTestFromModal = addCustomTestFromModal;
+        window.handleSaveClick = handleSaveClick; // <--- Yeh bahut zaroori hai
         
-        // Auto Load on Startup (For Water/Diesel)
+        // Auto Load
         window.addEventListener('DOMContentLoaded', () => {
             initAutoLoad();
         });
+    </script>
 
-        console.log("Modules Loaded & Linked");
-    </script> -->
-
+    
+  
 </body>
 </html>

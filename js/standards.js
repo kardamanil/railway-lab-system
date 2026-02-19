@@ -3,10 +3,13 @@ import { db, collection, addDoc, getDocs, query, where, updateDoc, doc, arrayUni
 
 // Global Variables
 let currentTestsList = [];
-let currentStdDocId = null; // To track if we are editing a Firebase Standard
-let isCreatingNewStandard = false; // Flag to check if we are creating new or just adding test
+let currentStdDocId = null;
+let isCreatingNewStandard = false; 
 
-// --- 1. SEARCH STANDARD (From Firebase) ---
+// NEW: Track current mode (Local vs Firebase)
+let currentModeIsLocal = false; 
+
+// --- 1. SEARCH STANDARD ---
 async function searchStandard() {
     const searchInput = document.getElementById('stdSearch').value.toUpperCase().trim();
     const tableBody = document.getElementById('testTableBody');
@@ -22,29 +25,29 @@ async function searchStandard() {
         tableBody.innerHTML = ""; 
 
         if (!querySnapshot.empty) {
-            // FOUND IN DB
             querySnapshot.forEach((doc) => {
-                currentStdDocId = doc.id; // SAVE ID for updates
+                currentStdDocId = doc.id;
                 const data = doc.data();
                 currentTestsList = data.tests;
                 displayTests(data.tests);
             });
-            // Show "Add to Existing" Button
-            document.getElementById('btnAddCustomTest').innerText = "+ Add New Test to this Standard (Update DB)";
-            document.getElementById('btnAddCustomTest').onclick = () => openCreationModal(searchInput, false);
+            // Found: Enable "Add to Existing"
+            const btn = document.getElementById('btnAddCustomTest');
+            btn.innerText = "+ Add New Test to this Standard (Update DB)";
+            btn.style.display = 'block'; // Show button
+            btn.onclick = () => openCreationModal(searchInput, false); // False = Save to DB
         } else {
-            // NOT FOUND
+            // Not Found
             currentStdDocId = null;
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="4" style="text-align:center; color:red;">
-                        Standard Not Found in Firebase.<br>
+                        Standard Not Found.<br>
                         <button class="btn btn-sm btn-primary" style="margin-top:10px;" onclick="window.startNewStandardCreation('${searchInput}')">
                             Create New Standard & Save to DB
                         </button>
                     </td>
                 </tr>`;
-            // Hide custom add button until standard exists
              document.getElementById('btnAddCustomTest').style.display = 'none';
         }
     } catch (e) { console.error(e); alert("Database Error"); }
@@ -54,9 +57,7 @@ async function searchStandard() {
 function displayTests(testsArray) {
     const tableBody = document.getElementById('testTableBody');
     tableBody.innerHTML = "";
-
-    // Show Custom Add Button again if hidden
-    document.getElementById('btnAddCustomTest').style.display = 'block';
+    document.getElementById('btnAddCustomTest').style.display = 'block'; // Ensure button is visible
 
     testsArray.forEach((test) => {
         let specText = "";
@@ -82,30 +83,29 @@ function displayTests(testsArray) {
     });
 }
 
-// --- 3. AUTO LOAD (FIXED) ---
+// --- 3. AUTO LOAD ---
 function initAutoLoad() {
     const category = localStorage.getItem('selectedCategory');
     const searchBox = document.querySelector('.search-box');
     const customBtn = document.getElementById('btnAddCustomTest');
 
     if (category === 'Water') {
-        // HIDE Search Box for Water
         searchBox.style.display = 'none';
         customBtn.innerText = "+ Add Temporary Test (Local Only)";
+        customBtn.style.display = 'block';
         customBtn.onclick = () => openCreationModal("Custom", true); // True = Local Only
         loadPredefinedTests("IS 10500:2012 (Water)", window.STD_WATER);
     } 
     else if (category === 'Diesel') {
-        // HIDE Search Box for Diesel
         searchBox.style.display = 'none';
         customBtn.innerText = "+ Add Temporary Test (Local Only)";
+        customBtn.style.display = 'block';
         customBtn.onclick = () => openCreationModal("Custom", true);
         loadPredefinedTests("IS 1460 (Diesel)", window.STD_DIESEL);
     }
     else {
-        // SHOW Search Box for Lube/Grease
         searchBox.style.display = 'flex';
-        customBtn.style.display = 'none'; // Hide until search result
+        customBtn.style.display = 'none';
     }
 }
 
@@ -117,65 +117,54 @@ function loadPredefinedTests(stdName, testsArray) {
     displayTests(currentTestsList);
 }
 
-// --- 4. NEW STANDARD CREATION FLOW ---
+// --- 4. START NEW STANDARD ---
 function startNewStandardCreation(stdName) {
-    // Clear Table
-    document.getElementById('testTableBody').innerHTML = "<tr><td colspan='4' style='text-align:center;'>Adding tests for new standard...</td></tr>";
-    
-    // Set Flag
+    document.getElementById('testTableBody').innerHTML = "<tr><td colspan='4' style='text-align:center;'>Adding tests...</td></tr>";
     isCreatingNewStandard = true;
-    currentTestsList = []; // Reset list
+    currentTestsList = []; 
     currentStdDocId = null;
-
-    // Open Modal to add first test
-    openCreationModal(stdName, false);
+    openCreationModal(stdName, false); // False = Save to DB
 }
 
-// --- 5. MODAL LOGIC & SAVING ---
+// --- 5. MODAL OPEN LOGIC ---
 function openCreationModal(stdName, isLocalOnly) {
+    // 1. Show Modal
     document.getElementById('stdModal').classList.remove('hidden');
     document.getElementById('modalStdName').value = stdName || "";
     
-    // Logic: If LocalOnly (Water/Diesel), we don't save to DB.
-    // If not local, we save to DB.
-    const btnSave = document.getElementById('btnSaveTest');
-    
-    // Clear Inputs
+    // 2. Set Global Mode Variable (CRITICAL FIX)
+    currentModeIsLocal = isLocalOnly;
+    console.log("Modal Opened. Mode Local?", currentModeIsLocal);
+
+    // 3. Clear Inputs
     document.getElementById('modalTestName').value = "";
     document.getElementById('modalTestMethod').value = "";
     document.getElementById('modalMin').value = "";
     document.getElementById('modalMax').value = "";
     toggleLimitInputs();
-
-    btnSave.onclick = async function() {
-        await saveTestLogic(isLocalOnly);
-    };
 }
 
-// Toggle Inputs based on dropdown
+// --- 6. HANDLE SAVE CLICK (Triggered by Button) ---
+async function handleSaveClick() {
+    console.log("Save Clicked. Mode Local?", currentModeIsLocal);
+    await saveTestLogic(currentModeIsLocal);
+}
+
+// Helper: Toggle Inputs
 function toggleLimitInputs() {
     const type = document.getElementById('modalLimitType').value;
     const minGroup = document.getElementById('inputMinGroup');
     const maxGroup = document.getElementById('inputMaxGroup');
-
+    
     minGroup.classList.add('hidden');
     maxGroup.classList.add('hidden');
 
-    if (type === 'min') {
-        minGroup.classList.remove('hidden');
-        minGroup.querySelector('label').innerText = "Minimum Value:";
-    } else if (type === 'max') {
-        maxGroup.classList.remove('hidden'); 
-        minGroup.classList.add('hidden');
-    } else if (type === 'range') {
-        minGroup.classList.remove('hidden');
-        minGroup.querySelector('label').innerText = "Min:";
-        maxGroup.classList.remove('hidden');
-        maxGroup.querySelector('label').innerText = "Max:";
-    }
+    if (type === 'min') { minGroup.classList.remove('hidden'); }
+    else if (type === 'max') { maxGroup.classList.remove('hidden'); }
+    else if (type === 'range') { minGroup.classList.remove('hidden'); maxGroup.classList.remove('hidden'); }
 }
 
-// --- CORE SAVE LOGIC ---
+// --- 7. CORE SAVE LOGIC ---
 async function saveTestLogic(isLocalOnly) {
     const stdName = document.getElementById('modalStdName').value;
     const name = document.getElementById('modalTestName').value;
@@ -194,7 +183,7 @@ async function saveTestLogic(isLocalOnly) {
         max: maxVal
     };
 
-    // CASE A: Water/Diesel (Local Only)
+    // CASE A: Local Only (Water/Diesel)
     if (isLocalOnly) {
         currentTestsList.push(newTest);
         displayTests(currentTestsList);
@@ -202,19 +191,17 @@ async function saveTestLogic(isLocalOnly) {
         return;
     }
 
-    // CASE B: Creating NEW Standard (First Test)
+    // CASE B: New Standard (Firebase)
     if (isCreatingNewStandard) {
         try {
             const docRef = await addDoc(collection(db, "standards_master"), {
                 std_name: stdName,
                 created_at: new Date(),
-                tests: [newTest] // Start with 1 test
+                tests: [newTest]
             });
             currentStdDocId = docRef.id;
-            isCreatingNewStandard = false; // Now it exists
-            alert("New Standard Created & Test Saved!");
-            
-            // Reload from DB to ensure sync
+            isCreatingNewStandard = false;
+            alert("New Standard Created!");
             document.getElementById('stdSearch').value = stdName;
             searchStandard();
             document.getElementById('stdModal').classList.add('hidden');
@@ -222,22 +209,17 @@ async function saveTestLogic(isLocalOnly) {
         return;
     }
 
-    // CASE C: Adding to EXISTING Standard
+    // CASE C: Existing Standard (Firebase)
     if (currentStdDocId) {
         try {
             const stdRef = doc(db, "standards_master", currentStdDocId);
-            await updateDoc(stdRef, {
-                tests: arrayUnion(newTest)
-            });
-            alert("Test Added to Database!");
-            
-            // Reload
-            const currentName = document.getElementById('stdSearch').value;
+            await updateDoc(stdRef, { tests: arrayUnion(newTest) });
+            alert("Test Added!");
             searchStandard();
             document.getElementById('stdModal').classList.add('hidden');
-        } catch (e) { console.error(e); alert("Error updating standard"); }
+        } catch (e) { console.error(e); alert("Error updating"); }
     }
 }
 
-// Export
-export { searchStandard, startNewStandardCreation, openCreationModal, toggleLimitInputs, initAutoLoad };
+// EXPORT
+export { searchStandard, startNewStandardCreation, openCreationModal, toggleLimitInputs, initAutoLoad, handleSaveClick };
